@@ -1,0 +1,3 @@
+matang
+rusak
+tidak_matang

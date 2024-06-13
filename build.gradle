@@ -18,6 +18,10 @@ buildscript {
     }
 }
 
+ext {
+    tensorflowLiteVersion = '2.6.1'
+}
+
 allprojects {
     repositories {
         google()
