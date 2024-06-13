@@ -3,6 +3,7 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 27
     defaultConfig {
+        namespace "krunal.com.example.cameraapp"
         applicationId "krunal.com.example.cameraapp"
         minSdkVersion 15
         targetSdkVersion 27
