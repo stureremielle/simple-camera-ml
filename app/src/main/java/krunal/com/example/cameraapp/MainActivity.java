@@ -4,23 +4,29 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.net.Uri;
-import android.provider.MediaStore;
-import android.support.annotation.NonNull;
-import android.support.design.widget.FloatingActionButton;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.content.FileProvider;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -41,6 +47,8 @@ public class MainActivity extends AppCompatActivity {
 
     private FloatingActionButton mClear,mSave,mShare;
 
+    private ObjectDetector objectDetector; // Add this line
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
         mSave.setVisibility(View.GONE);
         mClear.setVisibility(View.GONE);
 
+        objectDetector = new ObjectDetector(this); // Add this line
 
         mStartCamera.setOnClickListener(v -> {
             // Check for the external storage permission
@@ -126,6 +135,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
         // Called when you request permission to read and write to external storage
         switch (requestCode) {
             case REQUEST_STORAGE_PERMISSION: {
@@ -145,16 +156,18 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
         // If the image capture activity was called and was successful
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             // Process the image and set it to the TextView
             processAndSetImage();
         } else {
-
             // Otherwise, delete the temporary image file
             BitmapUtils.deleteImageFile(this, mTempPhotoPath);
         }
     }
+
 
     /**
      * Creates a temporary image file and captures a picture to store in it.
@@ -194,7 +207,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     /**
      * Method for processing the captured image and setting it to the TextView.
      */
@@ -210,12 +222,35 @@ public class MainActivity extends AppCompatActivity {
         // Resample the saved image to fit the ImageView
         mResultsBitmap = BitmapUtils.resamplePic(this, mTempPhotoPath);
 
+        // Perform object detection
+        List<ObjectDetector.Recognition> recognitions = objectDetector.recognizeImage(mResultsBitmap);
+
+        // Draw bounding boxes on the bitmap
+        mResultsBitmap = drawBoundingBoxes(mResultsBitmap, recognitions);
 
         // Set the new bitmap to the ImageView
         mImageView.setImageBitmap(mResultsBitmap);
     }
 
+    private Bitmap drawBoundingBoxes(Bitmap bitmap, List<ObjectDetector.Recognition> recognitions) {
+        Bitmap mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+        Canvas canvas = new Canvas(mutableBitmap);
+        Paint paint = new Paint();
+        paint.setColor(Color.RED);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(8.0f);
 
+        Paint textPaint = new Paint();
+        textPaint.setColor(Color.RED);
+        textPaint.setTextSize(36.0f);
 
+        for (ObjectDetector.Recognition recognition : recognitions) {
+            RectF location = recognition.getLocation();
+            canvas.drawRect(location, paint);
+            canvas.drawText(recognition.getLabel() + ": " + String.format("%.2f", recognition.getConfidence()), location.left, location.top, textPaint);
+        }
 
+        return mutableBitmap;
+    }
 }
+
